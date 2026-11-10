@@ -303,7 +303,7 @@ def executar_pipeline_silver(
     )
 
     with duckdb.connect(str(silver_db_path)) as con_silver:
-        con_silver.execute(f"ATTACH '{bronze_db_path}' AS con_bronze (READ_ONLY)")
+        con_silver.execute("ATTACH ? AS con_bronze (READ_ONLY)", [str(bronze_db_path)])
         tabelas = _executar_transformacoes_silver(con_silver)
         con_silver.execute("DETACH con_bronze")
 
