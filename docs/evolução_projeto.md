@@ -373,3 +373,60 @@ Este documento registra o histórico sequencial das entregas, respostas e marcos
    - Total de testes: **56 testes aprovados**.
    - Cobertura de código: **94.99%** (superando a meta exigida de 90%).
    - Formatação e linting 100% validados com `ruff`.
+
+---
+
+## 13. Conclusão da Spec 06-C (Filtros Temporais, Comparativos por UF e Refinamento MCP)
+
+**Data/Hora:** 10/11/2026 - 19:25  
+**Branch:** `dev`  
+**Commit:** `fix: correcao datatable google charts, filtros temporais e refinamento semantico mcp`
+
+### Resumo das Ações Realizadas:
+1. **Correção de Tipagem e Renderização no Google Charts (`src/frontend/app.js`)**:
+   - Resolução definitiva do erro `Type mismatch. Value does not match type number` ao separar consultas tabulares de gráficos de eixos.
+   - Implementação de `google.visualization.Table` para dados de scorecard e incidentes de churn, com detecção e inferência dinâmica de tipos coluna por coluna.
+   - Coerção numérica estrita em gráficos (`BarChart`, `ColumnChart`, `LineChart`) assegurando que a coluna 0 seja rótulo descritivo e as colunas 1..N sejam numéricas.
+2. **Refinamento Semântico e Diferenciação de Métricas (`src/api/intent_router.py`)**:
+   - Diferenciação entre métricas de **volume de pedidos** (`COUNT(DISTINCT order_id)`) e **faturamento** (`SUM(valor_total)`).
+   - Mapeamento explícito da intenção **"região"** para as 5 macrorregiões brasileiras (Sudeste, Sul, Nordeste, Centro-Oeste, Norte) via expressão `CASE` sobre a UF em `dim_clientes`.
+   - Mapeamento da intenção de **"estado / UF"** para agrupamento direto por unidade federativa (`customer_state`).
+3. **Filtros Temporais Globais e Reatividade (`src/frontend/index.html` e `app.js`)**:
+   - Adicionada barra executiva de filtros temporais no topo do dashboard com seletores drop-down para **Ano** (Todos, 2016, 2017, 2018) e **Mês** (Todos, Jan a Dez).
+   - Integração reativa automática atualizando KPIs (`/api/kpis?ano=&mes=`), evolução comparativa anual (`/api/comparativo/anual`) e métricas por estado (`/api/metricas/uf?ano=`).
+4. **Repositório SQL Parametrizado (`src/sql/`)**:
+   - `comparativo_anual_mensal.sql`: Matriz mensal multi-ano de faturamento, pedidos e ticket médio.
+   - `metricas_por_estado.sql`: Indicadores consolidados por UF com filtro preparado de ano.
+   - `pedidos_por_regiao.sql`: Agrupamento pelas 5 macrorregiões oficiais do Brasil.
+5. **Testes Unitários e Qualidade**:
+   - Cobertura total de testes: **95.48%** (58 testes aprovados, meta de 90% superada).
+   - Todas as funções em `src/` mantidas estritamente com $\le 40$ linhas.
+   - Formatação e linting 100% limpos via `ruff`.
+
+---
+
+## 14. Conclusão da Spec 07 (Documentação Final MkDocs Material, Qualidade e Entrega)
+
+**Data/Hora:** 10/11/2026 - 19:45  
+**Branch:** `dev`  
+**Commit:** `feat: 42 testes com pytest-cov, ruff linting e documentacao final mkdocs`
+
+### Resumo das Ações Realizadas:
+1. **Documentação Técnica Completa (MkDocs Material)**:
+   - Instalação de `mkdocs` e `mkdocs-material` via `uv add --dev mkdocs mkdocs-material`.
+   - Criação do arquivo `mkdocs.yml` na raiz com tema Material (`slate`/`default`), busca integrada e estrutura navegável em `docs/`:
+     - `docs/index.md`: Visão geral, ressalva amostral e navegação.
+     - `docs/arquitetura.md`: Arquitetura Medalhão (Bronze, Silver, Gold e Views Semânticas).
+     - `docs/dicionario_gold.md`: Dicionário de Dados e Modelo Dimensional Star Schema da Gold.
+     - `docs/guia_execucao.md`: Guia de operação passo a passo com `uv`, pipeline, MCP e FastAPI.
+     - `docs/mcp_tools.md`: Especificação técnica das tools do Servidor MCP (`get_schema`, `run_query`) e segurança Read-Only.
+     - `docs/erros_ia.md`, `docs/evolução_projeto.md` e `docs/conteúdo_tabelas.md`.
+   - Build validado com `uv run mkdocs build --strict` sem qualquer erro ou warning.
+2. **README.md Executivo e Avaliativo**:
+   - Atualização completa na raiz do projeto contemplando a arquitetura implementada, citação da fonte e licença pública (Kaggle Olist — CC BY-NC-SA 4.0), ressalva amostral (2016-2018), guia rápido via `uv` e a seção obrigatória `## Onde a IA Errou` consolidando todos os pontos de `docs/erros_ia.md`.
+3. **Garantia de Qualidade e Cobertura de Testes**:
+   - Formatação e linting validados com `uv run ruff format .` e `uv run ruff check --select I --fix .`.
+   - Suíte de testes executada com `uv run pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=90`.
+   - Resultado final: **58 testes aprovados** (acima do mínimo de 42) e **95.48% de cobertura de código** (acima do mínimo de 90%).
+4. **Orientação de Fechamento e Pull Request**:
+   - Exibição dos comandos exatos para consolidação e abertura do Pull Request da branch `dev` para a `main`.

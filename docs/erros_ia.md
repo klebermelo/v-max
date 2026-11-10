@@ -122,6 +122,18 @@ Este documento registra de forma transparente e detalhada todas as falhas, desvi
 - **Impacto:** Violação da diretriz estrita de responsabilidade única e limite de linhas da `skill.md`.
 - **Solução adotada:** Refatoração aplicando o padrão de despacho via tabela/lista de tuplas (`INTENT_MATCHERS`), iterando sobre pares de `(regex_pattern, handler)` e reduzindo o tamanho da função para menos de 20 linhas.
 
+### 4.6 Inconsistência de identificadores de coluna na junção Gold (`data_compra_id` vs `data_pedido`)
+- **Falha:** Durante a criação das novas queries da Spec 06-C (`comparativo_anual_mensal.sql` e `metricas_por_estado.sql`), o texto preliminar da spec referenciava `f.data_compra_id = t.tempo_id`, ocasionando `BinderException: Table "f" does not have a column named "data_compra_id"`.
+- **Causa-raiz:** Divergência entre o texto de exemplo da spec e a modelagem física prévia consolidada da camada Gold (onde a chave na fato é `data_pedido` e na dimensão tempo é `data`).
+- **Impacto:** Falha na execução das queries SQL analíticas.
+- **Solução adotada:** Ajuste imediato do repositório SQL em `src/sql/` para referenciar os nomes de coluna canônicos do banco DuckDB (`f.data_pedido = t.data` e `f.lead_time_dias`).
+
+### 4.7 Conflito de tipos no Google Charts (`Type mismatch. Value does not match type number`)
+- **Falha:** No módulo interativo de perguntas ao clicar em "Scorecard de Vendedores" ou "Entregas Críticas", o frontend gerava a exceção de tipagem do Google Charts.
+- **Causa-raiz:** A função de desenho dinâmico assumia que a partir da coluna de índice 1 todos os valores seriam obrigatoriamente do tipo `'number'`, ignorando colunas textuais intermediárias (ex: "Localização", "UF").
+- **Impacto:** Quebra visual do gráfico e mensagem de erro em vermelho na tela para o usuário executivo.
+- **Solução adotada:** Separação estrita de visualizações: dados tabulares/scorecard passaram a ser renderizados via `google.visualization.Table` com tipagem inferida dinamicamente célula a célula, e gráficos (`BarChart`, `ColumnChart`, `LineChart`) receberam coerção numérica explícita para evitar injeção de strings em eixos métricos.
+
 ---
 
 ## 5. Resumo das Ações Corretivas e Próximos Passos

@@ -7,6 +7,15 @@
 google.charts.load('current', { packages: ['corechart', 'bar', 'table'] });
 google.charts.setOnLoadCallback(inicializarDashboard);
 
+let filtroAno = '';
+let filtroMes = '';
+
+const NOMES_MESES = {
+  '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+  '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+};
+
 function formatarMoeda(valor) {
   if (valor === null || valor === undefined) return 'R$ 0,00';
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -21,17 +30,49 @@ async function inicializarDashboard() {
   await carregarKPIsGerais();
   await carregarGraficoCategorias();
   await carregarGraficoEvolucaoMensal();
+  await carregarComparativoAnual();
+  await carregarMetricasPorUF();
   await carregarTabelaChurn();
+}
+
+function atualizarFiltrosGlobais() {
+  filtroAno = document.getElementById('filtro-ano').value;
+  filtroMes = document.getElementById('filtro-mes').value;
+
+  const indicator = document.getElementById('filter-indicator');
+  if (!filtroAno && !filtroMes) {
+    indicator.innerText = 'Exibindo histórico consolidado completo';
+  } else {
+    const partes = [];
+    if (filtroAno) partes.push(`Ano ${filtroAno}`);
+    if (filtroMes) partes.push(`Mês ${NOMES_MESES[filtroMes] || filtroMes}`);
+    indicator.innerText = `Filtrando por: ${partes.join(' | ')}`;
+  }
+
+  carregarKPIsGerais();
+  carregarMetricasPorUF();
+}
+
+function limparFiltros() {
+  document.getElementById('filtro-ano').value = '';
+  document.getElementById('filtro-mes').value = '';
+  atualizarFiltrosGlobais();
 }
 
 async function carregarKPIsGerais() {
   try {
-    const res = await fetch('/api/kpis');
+    const params = new URLSearchParams();
+    if (filtroAno) params.append('ano', filtroAno);
+    if (filtroMes) params.append('mes', filtroMes);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/kpis${qs}`);
     const data = await res.json();
+
     document.getElementById('kpi-gmv').innerText = formatarMoeda(data.gmv_total);
     document.getElementById('kpi-pedidos').innerText = formatarNumero(data.total_pedidos);
     document.getElementById('kpi-ticket').innerText = formatarMoeda(data.ticket_medio_geral);
-    document.getElementById('kpi-leadtime').innerText = `${data.lead_time_medio_dias} dias`;
+    document.getElementById('kpi-leadtime').innerText = `${data.lead_time_medio_dias || 0} dias`;
   } catch (err) {
     console.error('Falha ao carregar KPIs:', err);
   }
@@ -48,7 +89,7 @@ async function carregarGraficoCategorias() {
     chartData.addColumn('number', 'GMV (R$)');
 
     top10.forEach(row => {
-      chartData.addRow([row.categoria, row.gmv]);
+      chartData.addRow([row.categoria, Number(row.gmv) || 0]);
     });
 
     const options = {
@@ -83,7 +124,7 @@ async function carregarGraficoEvolucaoMensal() {
     chartData.addColumn('number', 'Volume de Pedidos');
 
     data.forEach(row => {
-      chartData.addRow([row.ano_mes, row.receita_total, row.volume_pedidos]);
+      chartData.addRow([row.ano_mes, Number(row.receita_total) || 0, Number(row.volume_pedidos) || 0]);
     });
 
     const options = {
@@ -110,6 +151,101 @@ async function carregarGraficoEvolucaoMensal() {
     chart.draw(chartData, options);
   } catch (err) {
     console.error('Falha ao carregar evolução mensal:', err);
+  }
+}
+
+async function carregarComparativoAnual() {
+  try {
+    const res = await fetch('/api/comparativo/anual');
+    const data = await res.json();
+
+    // Organiza receita mensal por ano: { '01': { '2016': x, '2017': y, '2018': z } }
+    const mapa = {};
+    for (let m = 1; m <= 12; m++) {
+      const mesStr = String(m).padStart(2, '0');
+      mapa[mesStr] = { '2016': 0, '2017': 0, '2018': 0 };
+    }
+
+    data.forEach(item => {
+      if (mapa[item.mes] && mapa[item.mes][item.ano] !== undefined) {
+        mapa[item.mes][item.ano] = Number(item.gmv_total) || 0;
+      }
+    });
+
+    const chartData = new google.visualization.DataTable();
+    chartData.addColumn('string', 'Mês');
+    chartData.addColumn('number', '2016 (R$)');
+    chartData.addColumn('number', '2017 (R$)');
+    chartData.addColumn('number', '2018 (R$)');
+
+    Object.keys(mapa).sort().forEach(m => {
+      chartData.addRow([
+        NOMES_MESES[m] || m,
+        mapa[m]['2016'],
+        mapa[m]['2017'],
+        mapa[m]['2018']
+      ]);
+    });
+
+    const options = {
+      backgroundColor: 'transparent',
+      colors: ['#f59e0b', '#3b82f6', '#10b981'],
+      legend: { textStyle: { color: '#cbd5e1' }, position: 'top' },
+      chartArea: { width: '85%', height: '70%' },
+      hAxis: { textStyle: { color: '#94a3b8' } },
+      vAxis: {
+        textStyle: { color: '#94a3b8' },
+        gridlines: { color: '#233152' }
+      }
+    };
+
+    const chart = new google.visualization.LineChart(document.getElementById('chart-comparativo-anual'));
+    chart.draw(chartData, options);
+  } catch (err) {
+    console.error('Falha ao carregar comparativo anual:', err);
+  }
+}
+
+async function carregarMetricasPorUF() {
+  try {
+    const qs = filtroAno ? `?ano=${filtroAno}` : '';
+    const res = await fetch(`/api/metricas/uf${qs}`);
+    const data = await res.json();
+    const top10 = data.slice(0, 10);
+
+    const chartData = new google.visualization.DataTable();
+    chartData.addColumn('string', 'UF');
+    chartData.addColumn('number', 'Faturamento (R$)');
+    chartData.addColumn('number', 'Ticket Médio (R$)');
+
+    top10.forEach(row => {
+      chartData.addRow([
+        row.uf,
+        Number(row.gmv_total) || 0,
+        Number(row.ticket_medio) || 0
+      ]);
+    });
+
+    const options = {
+      backgroundColor: 'transparent',
+      colors: ['#06b6d4', '#ec4899'],
+      legend: { textStyle: { color: '#cbd5e1' }, position: 'top' },
+      chartArea: { width: '80%', height: '70%' },
+      hAxis: { textStyle: { color: '#94a3b8' } },
+      vAxes: {
+        0: { title: 'Faturamento (R$)', textStyle: { color: '#06b6d4' }, gridlines: { color: '#233152' } },
+        1: { title: 'Ticket Médio (R$)', textStyle: { color: '#ec4899' }, gridlines: { color: 'transparent' } }
+      },
+      series: {
+        0: { targetAxisIndex: 0, type: 'bars' },
+        1: { targetAxisIndex: 1, type: 'line' }
+      }
+    };
+
+    const chart = new google.visualization.ComboChart(document.getElementById('chart-metricas-uf'));
+    chart.draw(chartData, options);
+  } catch (err) {
+    console.error('Falha ao carregar métricas por UF:', err);
   }
 }
 
@@ -188,27 +324,65 @@ async function enviarPergunta(pergunta) {
 }
 
 function renderizarVisualizacaoDinamica(container, result) {
-  const chartData = new google.visualization.DataTable();
-
-  // Adiciona colunas
-  result.colunas.forEach((col, idx) => {
-    const tipo = (idx === 0) ? 'string' : 'number';
-    chartData.addColumn(tipo, col);
-  });
-
-  // Adiciona linhas
-  result.dados.forEach(row => {
-    chartData.addRow(row);
-  });
-
   const tipo = result.tipo_grafico;
+
+  // CASO 1: Renderização Tabular (google.visualization.Table) com tipagem dinâmica
+  if (tipo === 'table') {
+    const tableData = new google.visualization.DataTable();
+
+    // Inspeciona tipos dinamicamente baseado nos dados reais da primeira linha
+    const tipos = result.colunas.map((_, colIdx) => {
+      const primeiroValor = result.dados.length > 0 ? result.dados[0][colIdx] : null;
+      return typeof primeiroValor === 'number' ? 'number' : 'string';
+    });
+
+    result.colunas.forEach((col, idx) => {
+      tableData.addColumn(tipos[idx], col);
+    });
+
+    result.dados.forEach(row => {
+      const linhaFormatada = row.map((val, idx) => {
+        if (tipos[idx] === 'number') {
+          return val !== null && val !== undefined ? Number(val) : 0;
+        }
+        return val !== null && val !== undefined ? String(val) : '';
+      });
+      tableData.addRow(linhaFormatada);
+    });
+
+    container.innerHTML = '';
+    const table = new google.visualization.Table(container);
+    table.draw(tableData, {
+      showRowNumber: false,
+      width: '100%',
+      page: 'enable',
+      pageSize: 10,
+      allowHtml: true
+    });
+    return;
+  }
+
+  // CASO 2: Gráficos (BarChart, ColumnChart, LineChart)
+  // Estritamente coluna 0 = string e colunas subsequentes = number
+  const chartData = new google.visualization.DataTable();
+  chartData.addColumn('string', result.colunas[0]);
+
+  for (let c = 1; c < result.colunas.length; c++) {
+    chartData.addColumn('number', result.colunas[c]);
+  }
+
+  result.dados.forEach(row => {
+    const label = String(row[0] ?? '');
+    const metricas = row.slice(1).map(val => (val !== null && val !== undefined ? Number(val) : 0));
+    chartData.addRow([label, ...metricas]);
+  });
 
   if (tipo === 'bar') {
     const chart = new google.visualization.BarChart(container);
     chart.draw(chartData, {
       backgroundColor: 'transparent',
-      colors: ['#3b82f6'],
-      legend: { position: 'none' },
+      colors: ['#3b82f6', '#10b981'],
+      legend: { textStyle: { color: '#cbd5e1' }, position: 'top' },
       chartArea: { width: '70%', height: '80%' },
       hAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } },
       vAxis: { textStyle: { color: '#f1f5f9' } }
@@ -217,8 +391,8 @@ function renderizarVisualizacaoDinamica(container, result) {
     const chart = new google.visualization.ColumnChart(container);
     chart.draw(chartData, {
       backgroundColor: 'transparent',
-      colors: ['#06b6d4'],
-      legend: { position: 'none' },
+      colors: ['#06b6d4', '#8b5cf6'],
+      legend: { textStyle: { color: '#cbd5e1' }, position: 'top' },
       chartArea: { width: '80%', height: '70%' },
       hAxis: { textStyle: { color: '#94a3b8', fontSize: 11 }, slantedText: true, slantedTextAngle: 45 },
       vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } }
@@ -233,20 +407,5 @@ function renderizarVisualizacaoDinamica(container, result) {
       hAxis: { textStyle: { color: '#94a3b8' }, slantedText: true, slantedTextAngle: 45 },
       vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } }
     });
-  } else {
-    // Tabela padrão
-    let html = '<table><thead><tr>';
-    result.colunas.forEach(c => { html += `<th>${c}</th>`; });
-    html += '</tr></thead><tbody>';
-    result.dados.forEach(r => {
-      html += '<tr>';
-      r.forEach(val => {
-        const texto = (typeof val === 'number') ? val.toLocaleString('pt-BR') : val;
-        html += `<td>${texto}</td>`;
-      });
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
   }
 }

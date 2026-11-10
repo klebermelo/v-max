@@ -112,3 +112,26 @@ def test_otimizar_banco_gold_sucesso(tmp_path: Path) -> None:
 
     total_otimizacao = otimizar_banco_gold(db_teste)
     assert total_otimizacao == len(INDICES_GOLD)
+
+
+def test_novas_queries_temporais_e_regiao() -> None:
+    """Verifica execução das queries comparativo_anual, metricas_por_estado e pedidos_por_regiao."""
+    with duckdb.connect(":memory:") as con:
+        _criar_gold_amostra(con)
+
+        # 1. comparativo_anual_mensal
+        sql_comp = (SQL_DIR / "comparativo_anual_mensal.sql").read_text(
+            encoding="utf-8"
+        )
+        res_comp = con.execute(sql_comp).fetchall()
+        assert len(res_comp) > 0
+
+        # 2. metricas_por_estado com e sem filtro
+        sql_est = (SQL_DIR / "metricas_por_estado.sql").read_text(encoding="utf-8")
+        assert len(con.execute(sql_est, [None, None]).fetchall()) > 0
+        assert len(con.execute(sql_est, ["2021", "2021"]).fetchall()) > 0
+
+        # 3. pedidos_por_regiao com e sem filtro
+        sql_reg = (SQL_DIR / "pedidos_por_regiao.sql").read_text(encoding="utf-8")
+        assert len(con.execute(sql_reg, [None, None]).fetchall()) > 0
+        assert len(con.execute(sql_reg, ["2021", "2021"]).fetchall()) > 0

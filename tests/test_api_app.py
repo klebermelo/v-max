@@ -81,14 +81,48 @@ def test_api_endpoints_adicionais() -> None:
     """Cobre as demais rotas da API para garantir cobertura abrangente."""
     assert client.get("/api/schema").status_code == 200
     assert client.get("/api/kpis").status_code == 200
+    assert client.get("/api/kpis?ano=2017").status_code == 200
+    assert client.get("/api/kpis?ano=2017&mes=03").status_code == 200
+    assert client.get("/api/comparativo/anual").status_code == 200
+    assert client.get("/api/metricas/uf").status_code == 200
+    assert client.get("/api/metricas/uf?ano=2017").status_code == 200
+    assert client.get("/api/analytics/regioes").status_code == 200
+    assert client.get("/api/analytics/regioes?ano=2018").status_code == 200
     assert client.get("/api/analytics/gmv-categoria").status_code == 200
     assert client.get("/api/analytics/evolucao-mensal").status_code == 200
     assert client.get("/api/analytics/scorecard").status_code == 200
     assert client.get("/api/analytics/risco-churn").status_code == 200
 
+    # Teste de chat executivo (/api/chat)
+    chat_res = client.post("/api/chat", json={"message": "Total de pedidos por região"})
+    assert chat_res.status_code == 200
+    assert chat_res.json()["sucesso"] is True
+
     # Query permitida e proibida
     assert client.post("/api/query", json={"query": "SELECT 1"}).status_code == 200
     assert client.post("/api/query", json={"query": "DROP TABLE x"}).status_code == 400
+
+
+def test_roteador_semantico_regiao_e_metricas() -> None:
+    """Valida diferenciação entre volume/faturamento e macrorregião/estado."""
+    # 1. Total de pedidos por região (volume)
+    res_reg_vol = rotear_pergunta_executiva("Total de pedidos por região")
+    assert res_reg_vol["sucesso"] is True
+    assert res_reg_vol["tipo_grafico"] == "column"
+    assert "Macrorregião" in res_reg_vol["colunas"]
+    assert "Qtd Pedidos" in res_reg_vol["colunas"]
+    assert "pedidos" in res_reg_vol["resumo_executivo"].lower()
+
+    # 2. Faturamento por região
+    res_reg_fat = rotear_pergunta_executiva("Qual o faturamento por região?")
+    assert res_reg_fat["sucesso"] is True
+    assert "Faturamento (R$)" in res_reg_fat["colunas"]
+
+    # 3. Volume de pedidos por estado
+    res_est_vol = rotear_pergunta_executiva("Quantidade de pedidos por estado (UF)")
+    assert res_est_vol["sucesso"] is True
+    assert res_est_vol["tipo_grafico"] == "bar"
+    assert "Qtd Pedidos" in res_est_vol["colunas"]
 
 
 def test_api_ask_fallback_e_erro() -> None:
@@ -99,3 +133,4 @@ def test_api_ask_fallback_e_erro() -> None:
 
     res_erro = client.post("/api/ask", json={"pergunta": ""})
     assert res_erro.status_code == 200
+    assert res_erro.json()["sucesso"] is False
