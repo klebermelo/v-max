@@ -186,45 +186,41 @@ def _tratar_intencao_temporal() -> dict[str, Any]:
     }
 
 
+INTENT_MATCHERS = [
+    (
+        r"\b(uf|estado|estados|onde|regiao|região|geografico|geografica|geográfico|geográfica)\b",
+        _tratar_intencao_geografica,
+    ),
+    (
+        r"\b(categoria|categorias|produto|produtos|item|itens|vendido|vendidos)\b",
+        _tratar_intencao_categorias,
+    ),
+    (
+        r"\b(vendedor|vendedores|seller|sellers|scorecard|ranking)\b",
+        _tratar_intencao_vendedores,
+    ),
+    (
+        r"\b(atraso|atrasos|entrega|entregas|churn|insatisfacao|insatisfação|reclamacao|reclamação)\b",
+        _tratar_intencao_churn,
+    ),
+]
+
+
 def rotear_pergunta_executiva(pergunta: str) -> dict[str, Any]:
-    """Analisa semanticamente a pergunta e encaminha para o handler de inteligência analítica.
+    """Analisa semanticamente a pergunta e encaminha para o handler analítico.
 
     Args:
-        pergunta: Frase ou consulta em linguagem natural formulada pelo usuário.
+        pergunta: Frase formulada em linguagem natural pelo usuário.
 
     Returns:
-        Dicionário formatado com resumo executivo, dados higienizados e tipo de gráfico.
+        Dicionário formatado com resumo executivo, dados higienizados e gráfico.
     """
     texto = pergunta.lower().strip()
     logger.info("Roteador semântico acionado | Pergunta: '%s'", pergunta)
 
-    if re.search(
-        r"\b(uf|estado|estados|onde|regiao|região|geografico|geografica|geográfico|geográfica)\b",
-        texto,
-    ):
-        logger.info("Intenção identificada: Geográfica (UF/Estados)")
-        return _tratar_intencao_geografica()
+    for pattern, handler in INTENT_MATCHERS:
+        if re.search(pattern, texto):
+            return handler()
 
-    if re.search(
-        r"\b(categoria|categorias|produto|produtos|item|itens|vendido|vendidos)\b",
-        texto,
-    ):
-        logger.info("Intenção identificada: Categorias de Produto")
-        return _tratar_intencao_categorias()
-
-    if re.search(
-        r"\b(vendedor|vendedores|seller|sellers|scorecard|ranking)\b",
-        texto,
-    ):
-        logger.info("Intenção identificada: Vendedores e Reputação")
-        return _tratar_intencao_vendedores()
-
-    if re.search(
-        r"\b(atraso|atrasos|entrega|entregas|churn|insatisfacao|insatisfação|reclamacao|reclamação)\b",
-        texto,
-    ):
-        logger.info("Intenção identificada: Logística e Churn")
-        return _tratar_intencao_churn()
-
-    logger.info("Intenção identificada: Temporal / Padrão Mensal")
+    logger.info("Intenção identificada: Padrão Temporal Mensal")
     return _tratar_intencao_temporal()

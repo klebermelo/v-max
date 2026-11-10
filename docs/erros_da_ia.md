@@ -110,6 +110,18 @@ Este documento registra de forma transparente e detalhada todas as falhas, desvi
   - Modelar a `fato_vendas` no grão de itens de pedido via `INNER JOIN`, garantindo que toda linha na fato contenha cliente, produto, vendedor e data válidos.
   - Assegurar zero registros órfãos nas 4 dimensões (`dim_clientes`, `dim_produtos`, `dim_vendedores`, `dim_tempo`).
 
+### 4.4 Tentativa de `CREATE VIEW` em conexão DuckDB em modo `read_only=True`
+- **Falha:** Durante a integração da camada semântica no servidor MCP (`src/mcp/server.py`), a execução de `CREATE OR REPLACE VIEW` falhou com `InvalidInputException: Cannot execute statement of type "CREATE" on database "gold" which is attached in read-only mode!`.
+- **Causa-raiz:** A conexão com o banco DuckDB da Gold é instanciada com `read_only=True` por diretriz estrita de segurança. O catálogo do DuckDB rejeita comandos DDL que tentem persistir objetos em arquivos abertos em modo somente leitura.
+- **Impacto:** Bloqueio das queries semânticas executadas via MCP e interrupção dos testes da API.
+- **Solução adotada:** Substituição de `CREATE OR REPLACE VIEW` por `CREATE OR REPLACE TEMP VIEW`. As views temporárias são registradas na memória volátil da sessão ativa (`temp` schema), o que é totalmente permitido pelo DuckDB mesmo em bancos anexados em modo leitura.
+
+### 4.5 Excesso de linhas por repetição de `if` no roteador semântico
+- **Falha:** A função `rotear_pergunta_executiva` no módulo `src/api/intent_router.py` ultrapassou o limite máximo de 40 linhas, atingindo 42 linhas após formatação.
+- **Causa-raiz:** Sequência de múltiplos blocos `if re.search(...)` estruturados de forma procedural extensa dentro da mesma função.
+- **Impacto:** Violação da diretriz estrita de responsabilidade única e limite de linhas da `skill.md`.
+- **Solução adotada:** Refatoração aplicando o padrão de despacho via tabela/lista de tuplas (`INTENT_MATCHERS`), iterando sobre pares de `(regex_pattern, handler)` e reduzindo o tamanho da função para menos de 20 linhas.
+
 ---
 
 ## 5. Resumo das Ações Corretivas e Próximos Passos
