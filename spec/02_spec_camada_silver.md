@@ -20,4 +20,4 @@ Avance para a construção da camada intermediária do projeto V-MAX.
    - Salve as tabelas higienizadas no banco DuckDB `data/silver/silver.db`.
 6. **Commit:**
    - Adicione os arquivos gerados.
-   - Faça o commit com a mensagem exata: `feat: sanitizacao silver com funcoes modulares e logging`.
+   - Faça o commit com a mensagem exata: `feat: sanitizacao silver com funções modulares e logging`.
