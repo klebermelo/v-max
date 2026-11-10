@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V-MAX | Executive Intelligence Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-card: #131b2e;
+      --bg-card-hover: #1a243d;
+      --border-color: #233152;
+      --accent-color: #3b82f6;
+      --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --warning-bg: rgba(245, 158, 11, 0.1);
+      --warning-border: #f59e0b;
+      --danger-color: #ef4444;
+      --success-color: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      background: var(--accent-gradient);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.2rem;
+      padding: 8px 14px;
+      border-radius: 8px;
+    }
+
+    .brand h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .disclaimer-banner {
+      background-color: var(--warning-bg);
+      border-left: 4px solid var(--warning-border);
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      color: #fde68a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      background-color: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+
+    .kpi-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .interactive-ai-section {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .ai-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .ai-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .quick-queries {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .quick-btn {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-btn:hover {
+      background-color: var(--accent-color);
+      color: #fff;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+    }
+
+    .search-input {
+      flex: 1;
+      background-color: #0b1120;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .btn-ask {
+      background: var(--accent-gradient);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-ask:hover {
+      opacity: 0.9;
+    }
+
+    .ai-response-box {
+      margin-top: 16px;
+      background-color: #0b1120;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      display: none;
+    }
+
+    .ai-explicacao {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      border-left: 3px solid var(--accent-color);
+      padding-left: 10px;
+    }
+
+    .grid-charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .chart-container {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 420px;
+    }
+
+    .chart-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .full-width-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: #0b1120;
+      color: var(--text-muted);
+      position: sticky;
+      top: 0;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge-critico {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .badge-alto {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .badge-alerta {
+      background-color: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-badge">V-MAX</div>
+        <div>
+          <h1>Executive Intelligence Dashboard</h1>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">DuckDB Gold Layer & Model Context Protocol</p>
+        </div>
+      </div>
+      <div>
+        <span style="font-size: 0.8rem; background: #1e293b; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color);">
+          🟢 MCP Server Conectado (Read-Only)
+        </span>
+      </div>
+    </header>
+
+    <div class="disclaimer-banner">
+      <span>⚠️</span>
+      <div>
+        <strong>Aviso Executivo:</strong> Os dados apresentados referem-se a uma amostra extraída do dataset público Olist e possuem finalidade analítica/educacional. Toda inteligência deriva estritamente de queries SQL executadas na camada Gold.
+      </div>
+    </div>
+
+    <!-- KPIs Rápidos -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">GMV Total Faturado</div>
+        <div class="kpi-value" id="kpi-gmv">Carregando...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Volume de Pedidos</div>
+        <div class="kpi-value" id="kpi-pedidos">Carregando...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Ticket Médio Global</div>
+        <div class="kpi-value" id="kpi-ticket">Carregando...</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Lead Time Médio de Entrega</div>
+        <div class="kpi-value" id="kpi-leadtime">Carregando...</div>
+      </div>
+    </div>
+
+    <!-- Seção Interativa da IA -->
+    <div class="interactive-ai-section">
+      <div class="ai-header">
+        <div class="ai-title">🤖 Assistente de Decisão Executiva (MCP + DuckDB)</div>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Consultas seguras em linguagem natural</span>
+      </div>
+      
+      <div class="quick-queries">
+        <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Perguntas de Negócio:</span>
+        <button class="quick-btn" onclick="perguntar('Quem comprou mais, homem ou mulher?')">Demografia: Homem vs Mulher?</button>
+        <button class="quick-btn" onclick="perguntar('Quais produtos estão em estoque parado virtual?')">Estoque Parado / Sem Saída?</button>
+        <button class="quick-btn" onclick="perguntar('Quais as categorias de maior faturamento?')">Top Categorias GMV</button>
+        <button class="quick-btn" onclick="perguntar('Quais pedidos tiveram atraso crítico e risco de churn?')">Clientes em Risco de Churn</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="ai-input" class="search-input" placeholder="Faça uma pergunta para a IA sobre os dados ou digite uma instrução analítica...">
+        <button class="btn-ask" onclick="enviarPerguntaManual()">Consultar IA</button>
+      </div>
+
+      <div class="ai-response-box" id="ai-response-box">
+        <div class="ai-explicacao" id="ai-explicacao"></div>
+        <div id="ai-chart-area" style="min-height: 250px;"></div>
+      </div>
+    </div>
+
+    <!-- Gráficos Principais -->
+    <div class="grid-charts">
+      <div class="chart-container">
+        <div class="chart-title">📊 Faturamento por Categoria (Top 10 GMV)</div>
+        <div id="chart-categorias" style="height: 350px;"></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">📈 Evolução Mensal da Receita e Volume de Pedidos</div>
+        <div id="chart-mensal" style="height: 350px;"></div>
+      </div>
+    </div>
+
+    <!-- Tabela Risco de Churn -->
+    <div class="full-width-card">
+      <div class="chart-title">🚨 Monitoramento de Churn Logístico (Pós-Incidente)</div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+        Clientes severamente impactados por atrasos superiores a 5 dias ou notas críticas (&le; 2)
+      </p>
+      <div class="table-container">
+        <table id="tabela-churn">
+          <thead>
+            <tr>
+              <th>ID do Pedido</th>
+              <th>Cliente (ID Único)</th>
+              <th>UF</th>
+              <th>Atraso (Dias)</th>
+              <th>Nota Avaliação</th>
+              <th>Valor Total</th>
+              <th>Classificação de Risco</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="7" style="text-align: center;">Carregando dados da camada Gold...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
