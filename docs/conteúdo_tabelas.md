@@ -1,4 +1,4 @@
-## 7. Visualização das Tabelas da Camada Silver (Amostragem de 5 Linhas)
+## Visualização das Tabelas da Camada Silver (Amostragem de 5 Linhas)
 
 **Data/Hora:** 10/11/2026 - 15:51  
 **Origem:** `data/silver/silver.db`
