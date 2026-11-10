@@ -373,3 +373,32 @@ Este documento registra o histórico sequencial das entregas, respostas e marcos
    - Total de testes: **56 testes aprovados**.
    - Cobertura de código: **94.99%** (superando a meta exigida de 90%).
    - Formatação e linting 100% validados com `ruff`.
+
+---
+
+## 13. Conclusão da Spec 06-C (Filtros Temporais, Comparativos por UF e Refinamento MCP)
+
+**Data/Hora:** 10/11/2026 - 19:25  
+**Branch:** `dev`  
+**Commit:** `fix: correcao datatable google charts, filtros temporais e refinamento semantico mcp`
+
+### Resumo das Ações Realizadas:
+1. **Correção de Tipagem e Renderização no Google Charts (`src/frontend/app.js`)**:
+   - Resolução definitiva do erro `Type mismatch. Value does not match type number` ao separar consultas tabulares de gráficos de eixos.
+   - Implementação de `google.visualization.Table` para dados de scorecard e incidentes de churn, com detecção e inferência dinâmica de tipos coluna por coluna.
+   - Coerção numérica estrita em gráficos (`BarChart`, `ColumnChart`, `LineChart`) assegurando que a coluna 0 seja rótulo descritivo e as colunas 1..N sejam numéricas.
+2. **Refinamento Semântico e Diferenciação de Métricas (`src/api/intent_router.py`)**:
+   - Diferenciação entre métricas de **volume de pedidos** (`COUNT(DISTINCT order_id)`) e **faturamento** (`SUM(valor_total)`).
+   - Mapeamento explícito da intenção **"região"** para as 5 macrorregiões brasileiras (Sudeste, Sul, Nordeste, Centro-Oeste, Norte) via expressão `CASE` sobre a UF em `dim_clientes`.
+   - Mapeamento da intenção de **"estado / UF"** para agrupamento direto por unidade federativa (`customer_state`).
+3. **Filtros Temporais Globais e Reatividade (`src/frontend/index.html` e `app.js`)**:
+   - Adicionada barra executiva de filtros temporais no topo do dashboard com seletores drop-down para **Ano** (Todos, 2016, 2017, 2018) e **Mês** (Todos, Jan a Dez).
+   - Integração reativa automática atualizando KPIs (`/api/kpis?ano=&mes=`), evolução comparativa anual (`/api/comparativo/anual`) e métricas por estado (`/api/metricas/uf?ano=`).
+4. **Repositório SQL Parametrizado (`src/sql/`)**:
+   - `comparativo_anual_mensal.sql`: Matriz mensal multi-ano de faturamento, pedidos e ticket médio.
+   - `metricas_por_estado.sql`: Indicadores consolidados por UF com filtro preparado de ano.
+   - `pedidos_por_regiao.sql`: Agrupamento pelas 5 macrorregiões oficiais do Brasil.
+5. **Testes Unitários e Qualidade**:
+   - Cobertura total de testes: **95.48%** (58 testes aprovados, meta de 90% superada).
+   - Todas as funções em `src/` mantidas estritamente com $\le 40$ linhas.
+   - Formatação e linting 100% limpos via `ruff`.

@@ -76,12 +76,81 @@
       border-left: 4px solid var(--warning-border);
       padding: 12px 16px;
       border-radius: 6px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       font-size: 0.9rem;
       color: #fde68a;
       display: flex;
       align-items: center;
       gap: 10px;
+    }
+
+    /* Barra de Filtros Globais */
+    .filter-bar {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-select {
+      background-color: #0b1120;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .filter-select:focus {
+      border-color: var(--accent-color);
+    }
+
+    .btn-reset-filter {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-reset-filter:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .filter-badge {
+      font-size: 0.8rem;
+      color: #60a5fa;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      margin-left: auto;
     }
 
     .kpi-grid {
@@ -235,7 +304,7 @@
 
     .grid-charts {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
       gap: 24px;
       margin-bottom: 24px;
     }
@@ -313,6 +382,34 @@
       border-radius: 12px;
       font-weight: 600;
     }
+
+    /* Google Charts Table Theme Overrides */
+    .google-visualization-table-table {
+      background-color: transparent !important;
+      color: #f1f5f9 !important;
+      font-family: 'Inter', sans-serif !important;
+      border-collapse: collapse !important;
+      width: 100% !important;
+    }
+    .google-visualization-table-th {
+      background-color: #0b1120 !important;
+      color: #94a3b8 !important;
+      border: 1px solid var(--border-color) !important;
+      padding: 10px 14px !important;
+      font-weight: 600 !important;
+    }
+    .google-visualization-table-td {
+      background-color: transparent !important;
+      border: 1px solid rgba(35, 49, 82, 0.4) !important;
+      padding: 10px 14px !important;
+      color: #f1f5f9 !important;
+    }
+    .google-visualization-table-tr-over {
+      background-color: rgba(255, 255, 255, 0.04) !important;
+    }
+    .google-visualization-table-tr-sel {
+      background-color: rgba(59, 130, 246, 0.2) !important;
+    }
   </style>
 </head>
 <body>
@@ -337,6 +434,42 @@
       <div>
         <strong>Aviso Executivo:</strong> Os dados apresentados referem-se a uma amostra extraída do dataset público Olist e possuem finalidade analítica/educacional. Toda inteligência deriva estritamente de análises consolidadas de negócio.
       </div>
+    </div>
+
+    <!-- Barra de Filtros Globais por Período -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span style="font-size: 1.1rem;">📅</span>
+        <label for="filtro-ano" class="filter-label">Ano:</label>
+        <select id="filtro-ano" class="filter-select" onchange="atualizarFiltrosGlobais()">
+          <option value="">Todos os Anos</option>
+          <option value="2016">2016</option>
+          <option value="2017">2017</option>
+          <option value="2018">2018</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filtro-mes" class="filter-label">Mês:</label>
+        <select id="filtro-mes" class="filter-select" onchange="atualizarFiltrosGlobais()">
+          <option value="">Todos os Meses</option>
+          <option value="01">01 - Janeiro</option>
+          <option value="02">02 - Fevereiro</option>
+          <option value="03">03 - Março</option>
+          <option value="04">04 - Abril</option>
+          <option value="05">05 - Maio</option>
+          <option value="06">06 - Junho</option>
+          <option value="07">07 - Julho</option>
+          <option value="08">08 - Agosto</option>
+          <option value="09">09 - Setembro</option>
+          <option value="10">10 - Outubro</option>
+          <option value="11">11 - Novembro</option>
+          <option value="12">12 - Dezembro</option>
+        </select>
+      </div>
+
+      <button class="btn-reset-filter" onclick="limparFiltros()">↺ Limpar Filtros</button>
+      <span id="filter-indicator" class="filter-badge">Exibindo histórico consolidado completo</span>
     </div>
 
     <!-- KPIs Rápidos -->
@@ -367,13 +500,14 @@
       </div>
 
       <div class="search-box">
-        <input type="text" id="ai-input" class="search-input" placeholder="Ex: Qual estado mais comprou? ou Top 5 categorias com maior faturamento...">
+        <input type="text" id="ai-input" class="search-input" placeholder="Ex: Qual o total de pedidos por região? ou Qual estado mais vendeu?...">
         <button class="btn-ask" onclick="enviarPerguntaManual()">Analisar</button>
       </div>
 
       <!-- Sugestões de Perguntas (Chips) -->
       <div class="suggested-chips">
         <span class="chip-label">Perguntas Frequentes:</span>
+        <button class="chip-btn" onclick="perguntar('Total de pedidos por região')">🗺️ Total de pedidos por região</button>
         <button class="chip-btn" onclick="perguntar('Qual estado (UF) mais comprou?')">📍 Qual estado (UF) mais comprou?</button>
         <button class="chip-btn" onclick="perguntar('Top 5 categorias com maior faturamento')">🏷️ Top 5 categorias com maior faturamento</button>
         <button class="chip-btn" onclick="perguntar('Quais vendedores têm maior nota e volume?')">⭐ Melhores vendedores por nota e volume</button>
@@ -397,6 +531,18 @@
       <div class="chart-container">
         <div class="chart-title">📈 Evolução Mensal da Receita e Volume de Pedidos</div>
         <div id="chart-mensal" style="height: 350px;"></div>
+      </div>
+    </div>
+
+    <!-- Comparativo Anual e Métricas por Estado (UF) -->
+    <div class="grid-charts">
+      <div class="chart-container">
+        <div class="chart-title">🗓️ Comparativo Histórico Mensal entre Anos</div>
+        <div id="chart-comparativo-anual" style="height: 350px;"></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">📍 Top Estados (UF) por Faturamento e Ticket Médio</div>
+        <div id="chart-metricas-uf" style="height: 350px;"></div>
       </div>
     </div>
 

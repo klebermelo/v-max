@@ -31,7 +31,7 @@ SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
 app = FastAPI(
     title="V-MAX Executive Dashboard & MCP API",
     description="API analítica conectada ao banco DuckDB da camada Gold e servidor MCP nativo.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.add_middleware(
@@ -52,9 +52,16 @@ class QueryRequest(BaseModel):
 class NaturalLanguageQueryRequest(BaseModel):
     """Payload para envio de pergunta em linguagem natural."""
 
-    pergunta: str = Field(
-        ..., description="Pergunta de negócio formulada pelo usuário."
+    pergunta: str | None = Field(
+        default=None, description="Pergunta de negócio formulada pelo usuário."
     )
+    message: str | None = Field(
+        default=None, description="Mensagem alternativa de consulta."
+    )
+
+    def obter_texto(self) -> str:
+        """Obtém o texto sanitizado da pergunta."""
+        return (self.pergunta or self.message or "").strip()
 
 
 def _ler_arquivo_sql(nome_arquivo: str, limit: int | None = None) -> str:
@@ -97,19 +104,60 @@ def api_run_query(payload: QueryRequest) -> dict[str, Any]:
 
 
 @app.get("/api/kpis")
-def api_kpis_gerais() -> dict[str, Any]:
-    """Retorna os indicadores consolidados de faturamento, pedidos e ticket médio."""
-    sql = """
+def api_kpis_gerais(ano: str | None = None, mes: str | None = None) -> dict[str, Any]:
+    """Retorna os indicadores consolidados com filtro opcional de ano e mês."""
+    condicoes = ["f.order_status NOT IN ('canceled', 'unavailable')"]
+    params: list[Any] = []
+    if ano:
+        condicoes.append("STRFTIME(TRY_CAST(t.data AS DATE), '%Y') = ?")
+        params.append(ano)
+    if mes:
+        condicoes.append("STRFTIME(TRY_CAST(t.data AS DATE), '%m') = ?")
+        params.append(mes.zfill(2))
+
+    where_clause = " AND ".join(condicoes)
+    sql = f"""
         SELECT
-            ROUND(SUM(valor_total), 2) AS gmv_total,
-            COUNT(DISTINCT order_id) AS total_pedidos,
-            ROUND(SUM(valor_total) / COUNT(DISTINCT order_id), 2) AS ticket_medio_geral,
-            ROUND(AVG(lead_time_dias), 1) AS lead_time_medio_dias
-        FROM fato_vendas
-        WHERE order_status NOT IN ('canceled', 'unavailable');
+            ROUND(SUM(f.valor_total), 2) AS gmv_total,
+            COUNT(DISTINCT f.order_id) AS total_pedidos,
+            ROUND(COALESCE(SUM(f.valor_total) / NULLIF(COUNT(DISTINCT f.order_id), 0), 0), 2) AS ticket_medio_geral,
+            ROUND(AVG(f.lead_time_dias), 1) AS lead_time_medio_dias
+        FROM fato_vendas AS f
+        INNER JOIN dim_tempo AS t ON f.data_pedido = t.data
+        WHERE {where_clause};
     """
-    dados = executar_consulta_segura(sql)
-    return dados[0] if dados else {}
+    dados = executar_consulta_segura(sql, params=params if params else None)
+    return (
+        dados[0]
+        if dados
+        else {
+            "gmv_total": 0.0,
+            "total_pedidos": 0,
+            "ticket_medio_geral": 0.0,
+            "lead_time_medio_dias": 0.0,
+        }
+    )
+
+
+@app.get("/api/comparativo/anual")
+def api_comparativo_anual() -> list[dict[str, Any]]:
+    """Retorna a matriz comparativa mensal de faturamento e volume entre os anos."""
+    sql = _ler_arquivo_sql("comparativo_anual_mensal.sql")
+    return executar_consulta_segura(sql)
+
+
+@app.get("/api/metricas/uf")
+def api_metricas_por_uf(ano: str | None = None) -> list[dict[str, Any]]:
+    """Retorna métricas completas agregadas por estado com filtro opcional de ano."""
+    sql = _ler_arquivo_sql("metricas_por_estado.sql")
+    return executar_consulta_segura(sql, params=[ano, ano])
+
+
+@app.get("/api/analytics/regioes")
+def api_pedidos_por_regiao(ano: str | None = None) -> list[dict[str, Any]]:
+    """Retorna faturamento e pedidos por macrorregião com filtro de ano."""
+    sql = _ler_arquivo_sql("pedidos_por_regiao.sql")
+    return executar_consulta_segura(sql, params=[ano, ano])
 
 
 @app.get("/api/analytics/gmv-categoria")
@@ -140,11 +188,19 @@ def api_risco_churn() -> list[dict[str, Any]]:
     return executar_consulta_segura(sql)
 
 
-@app.post("/api/ask")
-def api_pergunta_inteligente(payload: NaturalLanguageQueryRequest) -> dict[str, Any]:
-    """Processa perguntas de negócio via roteador semântico sem vazamento de detalhes técnicos."""
+def _processar_pergunta_semantica(texto: str) -> dict[str, Any]:
+    """Processa perguntas de negócio via roteador semântico sem vazamento técnico."""
+    if not texto:
+        return {
+            "sucesso": False,
+            "resumo_executivo": "Nenhuma pergunta foi enviada.",
+            "tipo_grafico": "table",
+            "titulo_visualizacao": "Consulta Vazia",
+            "colunas": ["Mensagem"],
+            "dados": [["Por favor, digite uma pergunta de negócio."]],
+        }
     try:
-        return rotear_pergunta_executiva(payload.pergunta)
+        return rotear_pergunta_executiva(texto)
     except (ValueError, KeyError, RuntimeError) as exc:
         logger.error("Falha no roteamento semântico: %s", exc)
         return {
@@ -155,6 +211,22 @@ def api_pergunta_inteligente(payload: NaturalLanguageQueryRequest) -> dict[str, 
             "colunas": ["Mensagem"],
             "dados": [[str(exc)]],
         }
+
+
+@app.post("/api/ask")
+def api_pergunta_inteligente(
+    payload: NaturalLanguageQueryRequest,
+) -> dict[str, Any]:
+    """Endpoint legado/compatível para perguntas executivas inteligentes."""
+    return _processar_pergunta_semantica(payload.obter_texto())
+
+
+@app.post("/api/chat")
+def api_chat_executivo(
+    payload: NaturalLanguageQueryRequest,
+) -> dict[str, Any]:
+    """Endpoint de chat executivo integrado com o servidor MCP e DuckDB."""
+    return _processar_pergunta_semantica(payload.obter_texto())
 
 
 if FRONTEND_DIR.exists():

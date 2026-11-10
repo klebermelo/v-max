@@ -128,41 +128,48 @@ def obter_schema_tabelas(
     return schemas
 
 
+SEMANTIC_VIEWS = (
+    "pedidos",
+    "itens_pedido",
+    "pagamentos",
+    "avaliacoes",
+    "clientes",
+    "vendedores",
+    "produtos",
+    "traducao_categorias",
+    "geolocalizacao",
+)
+
+
 def executar_consulta_segura(
-    query: str, db_path: Path = GOLD_DB_PATH
+    query: str, db_path: Path = GOLD_DB_PATH, params: list[Any] | None = None
 ) -> list[dict[str, Any]]:
-    """Executa com segurança uma consulta SELECT e retorna os registros como lista de dicionários.
+    """Executa com segurança uma consulta SELECT e retorna registros serializados.
 
     Args:
         query: Query SQL a ser executada.
         db_path: Caminho do banco DuckDB da Gold.
+        params: Parâmetros opcionais para prepared statement.
 
     Returns:
-        Lista de registros serializados.
+        Lista de registros como dicionários.
     """
     validar_apenas_select(query)
     logger.info("Executando tool: run_query | SQL: %s", query[:100])
     with _conectar_gold(db_path) as con:
-        # Se o banco Silver existir e não for o mesmo, anexa para permitir consulta às views semânticas
         silver_path = Path("data/silver/silver.db")
         if silver_path.exists() and db_path != silver_path:
             con.execute("ATTACH ? AS silver (READ_ONLY);", [str(silver_path)])
-            for view_pt in [
-                "pedidos",
-                "itens_pedido",
-                "pagamentos",
-                "avaliacoes",
-                "clientes",
-                "vendedores",
-                "produtos",
-                "traducao_categorias",
-                "geolocalizacao",
-            ]:
+            for view_pt in SEMANTIC_VIEWS:
                 con.execute(
                     f"CREATE OR REPLACE TEMP VIEW {view_pt} AS SELECT * FROM silver.{view_pt};"
                 )
 
-        resultado = con.execute(query).fetchall()
+        resultado = (
+            con.execute(query, params).fetchall()
+            if params is not None
+            else con.execute(query).fetchall()
+        )
         colunas = [c[0] for c in con.description] if con.description else []
         return [
             {colunas[i]: _serializar_valor(row[i]) for i in range(len(colunas))}
