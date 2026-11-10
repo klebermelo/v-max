@@ -95,7 +95,7 @@ def validar_apenas_select(query: str) -> None:
 def obter_schema_tabelas(
     db_path: Path = GOLD_DB_PATH,
 ) -> dict[str, list[dict[str, str]]]:
-    """Inspeciona o catálogo da Camada Gold e retorna a estrutura de cada tabela.
+    """Inspeciona o catálogo da Camada Gold e Silver, retornando a estrutura das tabelas e views.
 
     Args:
         db_path: Caminho do banco DuckDB da Gold.
@@ -104,14 +104,27 @@ def obter_schema_tabelas(
         Dicionário com nomes de tabelas mapeados para suas respectivas colunas e tipos.
     """
     logger.info("Executando tool: get_schema")
+    schemas: dict[str, list[dict[str, str]]] = {}
     with _conectar_gold(db_path) as con:
         tabelas = [r[0] for r in con.execute("SHOW TABLES;").fetchall()]
-        schemas: dict[str, list[dict[str, str]]] = {}
         for tabela in tabelas:
             colunas = con.execute(f"DESCRIBE {tabela};").fetchall()
             schemas[tabela] = [
                 {"coluna": col[0], "tipo": col[1], "nulo": col[2]} for col in colunas
             ]
+
+    # Inclui as views semânticas caso o banco Silver exista
+    silver_path = Path("data/silver/silver.db")
+    if silver_path.exists():
+        with duckdb.connect(str(silver_path), read_only=True) as con_silver:
+            views_silver = [r[0] for r in con_silver.execute("SHOW TABLES;").fetchall()]
+            for item in views_silver:
+                if item not in schemas and not item.startswith("olist_"):
+                    cols = con_silver.execute(f"DESCRIBE {item};").fetchall()
+                    schemas[item] = [
+                        {"coluna": c[0], "tipo": c[1], "nulo": c[2]} for c in cols
+                    ]
+
     return schemas
 
 
@@ -130,6 +143,25 @@ def executar_consulta_segura(
     validar_apenas_select(query)
     logger.info("Executando tool: run_query | SQL: %s", query[:100])
     with _conectar_gold(db_path) as con:
+        # Se o banco Silver existir e não for o mesmo, anexa para permitir consulta às views semânticas
+        silver_path = Path("data/silver/silver.db")
+        if silver_path.exists() and db_path != silver_path:
+            con.execute("ATTACH ? AS silver (READ_ONLY);", [str(silver_path)])
+            for view_pt in [
+                "pedidos",
+                "itens_pedido",
+                "pagamentos",
+                "avaliacoes",
+                "clientes",
+                "vendedores",
+                "produtos",
+                "traducao_categorias",
+                "geolocalizacao",
+            ]:
+                con.execute(
+                    f"CREATE OR REPLACE TEMP VIEW {view_pt} AS SELECT * FROM silver.{view_pt};"
+                )
+
         resultado = con.execute(query).fetchall()
         colunas = [c[0] for c in con.description] if con.description else []
         return [
@@ -140,14 +172,20 @@ def executar_consulta_segura(
 
 @server.tool()
 def get_schema(db_path: Path | None = None) -> str:
-    """Retorna o esquema descritivo (DDL/colunas/tipos) das tabelas da Camada Gold."""
+    """Retorna o esquema descritivo (DDL/colunas/tipos) das tabelas e views semânticas."""
     caminho = db_path if db_path is not None else GOLD_DB_PATH
     return json.dumps(obter_schema_tabelas(caminho), indent=2, ensure_ascii=False)
 
 
 @server.tool()
 def run_query(query: str, db_path: Path | None = None) -> str:
-    """Executa uma consulta SQL read-only no banco Gold e retorna o resultado em formato JSON."""
+    """Executa consultas SQL read-only no banco Gold.
+
+    O LLM pode consultar tanto as tabelas dimensionais (fato_vendas, dim_clientes,
+    dim_produtos, dim_vendedores, dim_tempo, kpi_sumario_mensal) quanto as views semânticas
+    em português: pedidos, itens_pedido, pagamentos, avaliacoes, clientes, vendedores,
+    produtos, traducao_categorias e geolocalizacao.
+    """
     caminho = db_path if db_path is not None else GOLD_DB_PATH
     try:
         dados = executar_consulta_segura(query, caminho)

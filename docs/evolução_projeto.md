@@ -306,3 +306,70 @@ Este documento registra o histórico sequencial das entregas, respostas e marcos
    - Suíte geral de testes executada com `uv run pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=90`.
    - **Resultado alcançado:** **95.01%** de cobertura geral (54 testes passando).
    - Formatação e lint com `ruff` 100% limpos.
+
+---
+
+## 11. Conclusão da Spec 06-A (Refinamento do Módulo Interativo e UX Executiva)
+
+**Data/Hora:** 10/11/2026 - 17:30  
+**Branch:** `dev`  
+**Commit:** `279cc49` (`feat: refinamento do modulo interativo com roteador semantico e ux executiva`)
+
+### Resumo das Ações Realizadas:
+1. **Roteador Semântico de Intenções (`src/api/intent_router.py`)**:
+   - Mapeamento dinâmico e contextual de perguntas em linguagem natural para queries analíticas específicas do DuckDB executadas via tool `run_query` do servidor MCP:
+     - **Intenção Geográfica (UF/Estados):** Processa perguntas como *"Qual a UF que mais vendeu?"* agrupando faturamento e pedidos por `c.customer_state` (retorna tipo gráfico `bar`).
+     - **Intenção de Categorias de Produto:** Agrupa faturamento e pedidos por `p.product_category_name` (retorna tipo gráfico `column`).
+     - **Intenção de Vendedores:** Consolida faturamento e nota média de avaliação dos vendedores da Gold (retorna tipo gráfico `table`).
+     - **Intenção de Logística e Churn:** Identifica pedidos com atraso logístico superior a 5 dias ou notas críticas (retorna tipo gráfico `table`).
+     - **Intenção Temporal:** Série temporal e evolução mensal da receita (retorna tipo gráfico `line`).
+   - Nenhuma função excede 40 linhas (todas entre 7 e 30 linhas), com tipagem estrita, docstrings no padrão Google e observabilidade via `logging`.
+2. **Sanitização do Payload e Eliminação de Vazamento Técnico**:
+   - O payload JSON retornado pela API **não expõe** código SQL, nomes de tabelas/views internas nem jargões de infraestrutura.
+   - Resposta focada em resumos executivos claros e amigáveis para tomadores de decisão (`resumo_executivo`, `tipo_grafico`, `titulo_visualizacao`, `colunas`, `dados`).
+3. **Refinamento do Frontend (`src/frontend/index.html` e `app.js`)**:
+   - Excluídos todos os elementos de debug técnico que exibiam query SQL na tela.
+   - Adicionados chips/pills interativos com perguntas frequentes de negócio prontas para um clique:
+     - 📍 *"Qual estado (UF) mais comprou?"*
+     - 🏷️ *"Top 5 categorias com maior faturamento"*
+     - ⭐ *"Melhores vendedores por nota e volume"*
+     - 🚚 *"Entregas críticas e atraso"*
+   - Renderização dinâmica inteligente no Google Charts adaptando o tipo de gráfico (Barra, Coluna, Linha ou Tabela) de acordo com o `tipo_grafico` entregue pela API.
+4. **Testes Unitários e Qualidade**:
+   - Atualização da suíte de testes em `tests/test_api_app.py` validando todas as intenções do roteador semântico, endpoints e ausência de SQL nos payloads.
+   - Cobertura geral do projeto em **95.64%** com **53 testes passando** (superando a meta de 90%).
+   - Código 100% formatado e validado com o `ruff`.
+
+---
+
+## 12. Conclusão da Spec 06-B (Camada Semântica de Views em Português e Documentação Arquitetural)
+
+**Data/Hora:** 10/11/2026 - 18:00  
+**Branch:** `dev`  
+**Commit:** `feat: camada semantica de views em portugues e documentacao arquitetural`
+
+### Resumo das Ações Realizadas:
+1. **Módulo de Views Semânticas (`src/processing/semantic_views.py`)**:
+   - Criação de 9 views em português diretamente na camada Silver (`data/silver/silver.db`), proporcionando abstração semântica amigável para modelos de linguagem (LLM/IA) e analistas:
+     - `pedidos` $\rightarrow$ `olist_orders_dataset`
+     - `itens_pedido` $\rightarrow$ `olist_order_items_dataset`
+     - `pagamentos` $\rightarrow$ `olist_order_payments_dataset`
+     - `avaliacoes` $\rightarrow$ `olist_order_reviews_dataset`
+     - `clientes` $\rightarrow$ `olist_customers_dataset`
+     - `vendedores` $\rightarrow$ `olist_sellers_dataset`
+     - `produtos` $\rightarrow$ `olist_products_dataset`
+     - `traducao_categorias` $\rightarrow$ `product_category_name_translation`
+     - `geolocalizacao` $\rightarrow$ `olist_geolocation_dataset`
+   - Zero overhead de armazenamento: as views não duplicam dados em disco, apenas referenciam as tabelas higienizadas da Silver.
+   - Funções modulares $\le 40$ linhas, tipadas e com logging padronizado.
+2. **Atualização do Servidor MCP Nativo (`src/mcp/server.py`)**:
+   - A tool `get_schema()` agora lista as views semânticas em português juntamente com suas colunas e tipos, permitindo que o LLM descubra entidades em linguagem natural.
+   - A tool `run_query()` anexa dinamicamente o banco Silver e disponibiliza as views temporárias na sessão, possibilitando consultas tanto sobre o esquema Gold dimensional quanto sobre as entidades Silver em português.
+3. **Documentação Arquitetural (`docs/arquitetura.md` e `README.md`)**:
+   - Elaboração de `docs/arquitetura.md` com diagrama em formato de fluxo de dados (Medalhão: Bronze $\rightarrow$ Silver $\rightarrow$ Camada Semântica $\rightarrow$ Gold), justificativa técnica da camada semântica e dicionário de dados das 9 views.
+   - Atualização do `README.md` incluindo o passo 3 de geração das views semânticas na esteira de reprodução do pipeline.
+4. **Testes Unitários e Qualidade**:
+   - Criação do arquivo `tests/test_semantic_views.py` cobrindo a criação das 9 views em bancos em memória e arquivos temporários, além de validação de joins com nomes em português.
+   - Total de testes: **56 testes aprovados**.
+   - Cobertura de código: **94.99%** (superando a meta exigida de 90%).
+   - Formatação e linting 100% validados com `ruff`.

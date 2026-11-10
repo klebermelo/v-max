@@ -87,10 +87,7 @@ def list_raw_csv_files(raw_dir: Path) -> list[Path]:
     return sorted(files)
 
 
-def ingest_csv_to_bronze(
-    con: duckdb.DuckDBPyConnection,
-    file_path: Path,
-) -> str:
+def ingest_csv_to_bronze(con: duckdb.DuckDBPyConnection, file_path: Path) -> str:
     """Ingere um único arquivo CSV no banco DuckDB da camada Bronze sem alterações.
 
     Args:
@@ -105,29 +102,17 @@ def ingest_csv_to_bronze(
     loaded_at = datetime.now(UTC).isoformat()
 
     logger.info(
-        "Iniciando ingestão Bronze | arquivo=%s | tabela=%s | sha256=%s",
-        file_path.name,
-        table_name,
-        file_hash,
+        "Ingerindo Bronze: %s -> %s (hash: %s)", file_path.name, table_name, file_hash
     )
-
     query = f"""
         CREATE OR REPLACE TABLE {table_name} AS
-        SELECT
-            *,
-            ? AS _loaded_at,
-            ? AS _file_sha256
+        SELECT *, ? AS _loaded_at, ? AS _file_sha256
         FROM read_csv(?, all_varchar = true, header = true)
     """
     con.execute(query, [loaded_at, file_hash, str(file_path)])
-
-    row_count_result = con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
-    row_count = row_count_result[0] if row_count_result else 0
+    row_count = (con.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone() or [0])[0]
     logger.info(
-        "Ingestão concluída | tabela=%s | registros=%d | _loaded_at=%s",
-        table_name,
-        row_count,
-        loaded_at,
+        "Concluído: %s | registros=%d | _loaded_at=%s", table_name, row_count, loaded_at
     )
     return file_hash
 

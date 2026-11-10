@@ -61,13 +61,19 @@ uv sync
    uv run python -m src.processing.silver_processing
    ```
 
-3. **Camada Gold (Modelagem Dimensional e Validação de Integridade):**
+3. **Camada Semântica de Views em Português:**
+   Cria 9 views semânticas com custo zero de armazenamento (`pedidos`, `clientes`, `itens_pedido`, `produtos`, etc.) facilitando exploração por humanos e LLMs:
+   ```bash
+   uv run python -m src.processing.semantic_views
+   ```
+
+4. **Camada Gold (Modelagem Dimensional e Validação de Integridade):**
    Executa os modelos dimensionais, valida integridade referencial com transação e calcula Lead Time em `data/gold/gold.db`:
    ```bash
    uv run python -m src.processing.gold_processing
    ```
 
-4. **Otimização e Indexação da Gold para MCP:**
+5. **Otimização e Indexação da Gold para MCP:**
    Cria índices B-Tree nas Foreign Keys da `fato_vendas` e roda `ANALYZE;` para o CBO do DuckDB:
    ```bash
    uv run python -m src.processing.gold_optimization
