@@ -20,8 +20,6 @@
       --text-muted: #94a3b8;
       --warning-bg: rgba(245, 158, 11, 0.1);
       --warning-border: #f59e0b;
-      --danger-color: #ef4444;
-      --success-color: #10b981;
     }
 
     * {
@@ -47,7 +45,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border-color);
     }
@@ -143,32 +141,10 @@
       font-weight: 600;
     }
 
-    .quick-queries {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .quick-btn {
-      background-color: rgba(59, 130, 246, 0.1);
-      color: #60a5fa;
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .quick-btn:hover {
-      background-color: var(--accent-color);
-      color: #fff;
-    }
-
     .search-box {
       display: flex;
       gap: 12px;
+      margin-bottom: 14px;
     }
 
     .search-input {
@@ -201,21 +177,60 @@
       opacity: 0.9;
     }
 
+    .suggested-chips {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chip-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .chip-btn {
+      background-color: rgba(59, 130, 246, 0.1);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip-btn:hover {
+      background-color: var(--accent-color);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
     .ai-response-box {
-      margin-top: 16px;
+      margin-top: 20px;
       background-color: #0b1120;
       border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 10px;
+      padding: 20px;
       display: none;
     }
 
-    .ai-explicacao {
-      font-size: 0.9rem;
-      color: #cbd5e1;
+    .ai-resumo {
+      font-size: 1rem;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+      border-left: 4px solid var(--accent-color);
+      padding-left: 12px;
+      font-weight: 500;
+    }
+
+    .ai-viz-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
       margin-bottom: 12px;
-      border-left: 3px solid var(--accent-color);
-      padding-left: 10px;
     }
 
     .grid-charts {
@@ -307,12 +322,12 @@
         <div class="logo-badge">V-MAX</div>
         <div>
           <h1>Executive Intelligence Dashboard</h1>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">DuckDB Gold Layer & Model Context Protocol</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Decisões Estratégicas com Assistente de Negócios</p>
         </div>
       </div>
       <div>
         <span style="font-size: 0.8rem; background: #1e293b; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color);">
-          🟢 MCP Server Conectado (Read-Only)
+          🟢 Inteligência Analítica Ativa
         </span>
       </div>
     </header>
@@ -320,7 +335,7 @@
     <div class="disclaimer-banner">
       <span>⚠️</span>
       <div>
-        <strong>Aviso Executivo:</strong> Os dados apresentados referem-se a uma amostra extraída do dataset público Olist e possuem finalidade analítica/educacional. Toda inteligência deriva estritamente de queries SQL executadas na camada Gold.
+        <strong>Aviso Executivo:</strong> Os dados apresentados referem-se a uma amostra extraída do dataset público Olist e possuem finalidade analítica/educacional. Toda inteligência deriva estritamente de análises consolidadas de negócio.
       </div>
     </div>
 
@@ -344,33 +359,36 @@
       </div>
     </div>
 
-    <!-- Seção Interativa da IA -->
+    <!-- Módulo Interativo com Roteador Semântico -->
     <div class="interactive-ai-section">
       <div class="ai-header">
-        <div class="ai-title">🤖 Assistente de Decisão Executiva (MCP + DuckDB)</div>
-        <span style="font-size: 0.8rem; color: var(--text-muted);">Consultas seguras em linguagem natural</span>
-      </div>
-      
-      <div class="quick-queries">
-        <span style="font-size: 0.8rem; color: var(--text-muted); align-self: center;">Perguntas de Negócio:</span>
-        <button class="quick-btn" onclick="perguntar('Quem comprou mais, homem ou mulher?')">Demografia: Homem vs Mulher?</button>
-        <button class="quick-btn" onclick="perguntar('Quais produtos estão em estoque parado virtual?')">Estoque Parado / Sem Saída?</button>
-        <button class="quick-btn" onclick="perguntar('Quais as categorias de maior faturamento?')">Top Categorias GMV</button>
-        <button class="quick-btn" onclick="perguntar('Quais pedidos tiveram atraso crítico e risco de churn?')">Clientes em Risco de Churn</button>
+        <div class="ai-title">🤖 Assistente de Decisão Executiva</div>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Consultas e Insights em Linguagem Natural</span>
       </div>
 
       <div class="search-box">
-        <input type="text" id="ai-input" class="search-input" placeholder="Faça uma pergunta para a IA sobre os dados ou digite uma instrução analítica...">
-        <button class="btn-ask" onclick="enviarPerguntaManual()">Consultar IA</button>
+        <input type="text" id="ai-input" class="search-input" placeholder="Ex: Qual estado mais comprou? ou Top 5 categorias com maior faturamento...">
+        <button class="btn-ask" onclick="enviarPerguntaManual()">Analisar</button>
       </div>
 
+      <!-- Sugestões de Perguntas (Chips) -->
+      <div class="suggested-chips">
+        <span class="chip-label">Perguntas Frequentes:</span>
+        <button class="chip-btn" onclick="perguntar('Qual estado (UF) mais comprou?')">📍 Qual estado (UF) mais comprou?</button>
+        <button class="chip-btn" onclick="perguntar('Top 5 categorias com maior faturamento')">🏷️ Top 5 categorias com maior faturamento</button>
+        <button class="chip-btn" onclick="perguntar('Quais vendedores têm maior nota e volume?')">⭐ Melhores vendedores por nota e volume</button>
+        <button class="chip-btn" onclick="perguntar('Clientes com entregas críticas e atraso')">🚚 Entregas críticas e atraso</button>
+      </div>
+
+      <!-- Área de Resposta Executiva -->
       <div class="ai-response-box" id="ai-response-box">
-        <div class="ai-explicacao" id="ai-explicacao"></div>
-        <div id="ai-chart-area" style="min-height: 250px;"></div>
+        <div class="ai-resumo" id="ai-resumo"></div>
+        <div class="ai-viz-title" id="ai-viz-title"></div>
+        <div id="ai-chart-area" style="min-height: 280px;"></div>
       </div>
     </div>
 
-    <!-- Gráficos Principais -->
+    <!-- Gráficos Principais Padronizados -->
     <div class="grid-charts">
       <div class="chart-container">
         <div class="chart-title">📊 Faturamento por Categoria (Top 10 GMV)</div>
@@ -393,16 +411,16 @@
           <thead>
             <tr>
               <th>ID do Pedido</th>
-              <th>Cliente (ID Único)</th>
+              <th>Cliente</th>
               <th>UF</th>
-              <th>Atraso (Dias)</th>
-              <th>Nota Avaliação</th>
+              <th>Atraso</th>
+              <th>Avaliação</th>
               <th>Valor Total</th>
               <th>Classificação de Risco</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td colspan="7" style="text-align: center;">Carregando dados da camada Gold...</td></tr>
+            <tr><td colspan="7" style="text-align: center;">Carregando dados analíticos...</td></tr>
           </tbody>
         </table>
       </div>
