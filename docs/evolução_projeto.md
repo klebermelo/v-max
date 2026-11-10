@@ -225,3 +225,84 @@ Este documento registra o histórico sequencial das entregas, respostas e marcos
   3. `('automotivo', 'auto', '2026-11-10T16:52:39.468490+00:00')`
   4. `('cama_mesa_banho', 'bed_bath_table', '2026-11-10T16:52:39.468490+00:00')`
   5. `('moveis_decoracao', 'furniture_decor', '2026-11-10T16:52:39.468490+00:00')`
+
+---
+
+## 8. Conclusão da Spec 04 (Analytics e Otimização DuckDB)
+
+**Data/Hora:** 10/11/2026 - 16:29  
+**Branch:** `dev`  
+**Commit:** `c016c38` (`feat: consultas sql analiticas e otimizacao indexada na gold`)
+
+### Resumo das Ações Realizadas:
+1. **Consultas Analíticas em `src/sql/`**:
+   - `gmv_por_categoria.sql`: Cálculo de GMV, ticket médio por item e share percentual por categoria com CTEs.
+   - `scorecard_vendedores.sql`: Ranking de vendedores por volume financeiro e avaliações via `DENSE_RANK()`.
+   - `risco_churn.sql`: Identificação e categorização de risco ('Risco Crítico', 'Risco Alto', 'Alerta Operacional') para pedidos com atraso logístico e notas $\le 2$.
+   - `produtos_sem_saida.sql`: Cálculo de recência de venda por produto (`dias_sem_vender`) em relação à data máxima do histórico.
+   - `performance_geografica.sql`: Distribuição de receita, frete médio e prazos de entrega agregados por UF do cliente.
+2. **Otimização e Indexação (`src/processing/gold_optimization.py`)**:
+   - Criação de 4 índices estratégicos na `fato_vendas` (`order_id`, `customer_id`, `product_id`, `seller_id`).
+   - Execução do comando `ANALYZE;` para atualização de estatísticas do otimizador de custos (CBO).
+   - Todas as funções respeitando $\le 40$ linhas e contexto seguro `with duckdb.connect`.
+3. **Testes Unitários e Cobertura**:
+   - Criação de `tests/test_sql_analytics.py` testando a sintaxe e execução de todas as queries analíticas e rotinas de indexação.
+   - Cobertura total de testes mantida em **98.52%** (31 testes passando).
+
+---
+
+## 9. Conclusão da Spec 05 (Servidor MCP Nativo - Model Context Protocol)
+
+**Data/Hora:** 10/11/2026 - 16:33  
+**Branch:** `dev`  
+**Commit:** `d838a9b` (`feat: servidor mcp duckdb nativo para exploracao via IA`)
+
+### Resumo das Ações Realizadas:
+1. **SDK Oficial MCP**:
+   - Adicionada a dependência oficial `mcp` via `uv add "mcp>=1.0.0"`.
+   - Utilização do padrão moderno `MCPServer` do SDK oficial v2.
+2. **Implementação do Servidor (`src/mcp/server.py`)**:
+   - Conexão configurada estritamente em modo leitura (`read_only=True`) ao banco `data/gold/gold.db`.
+   - Nenhuma função excede 40 linhas (todas entre 3 e 24 linhas), com tipagem, logging e docstrings no padrão Google.
+3. **Tools Expostas para IAs e Analistas**:
+   - `get_schema`: Retorna o catálogo descritivo com tabelas, colunas, tipos e nulabilidade em formato JSON.
+   - `run_query`: Executa consultas ad-hoc e retorna resultados serializados em JSON.
+4. **Camada de Segurança Rigorosa**:
+   - Função `validar_apenas_select` valida o comando antes de qualquer acesso ao banco.
+   - Permite apenas instruções de leitura (`SELECT`, `WITH`, `DESCRIBE`, `EXPLAIN`).
+   - Rejeição estrita com `SQLSecurityError` para qualquer instrução mutativa ou DDL (`DROP`, `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `CREATE`, `ATTACH`, etc.).
+5. **Testes e Qualidade**:
+   - Criação de `tests/test_mcp_server.py` testando validações de segurança, conexões, formato dos retornos JSON e extração de esquemas (14 novos testes).
+   - Suíte geral de testes executada com `uv run pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=90`.
+   - **Resultado alcançado:** **97.65%** de cobertura geral (45 testes passando).
+   - Código formatado e validado com `ruff`.
+
+---
+
+## 10. Conclusão da Spec 06 (Dashboard Frontend e API FastAPI)
+
+**Data/Hora:** 10/11/2026 - 16:58  
+**Branch:** `dev`  
+**Commit:** `e785914` (`feat: dashboard fastapi e google charts integrado ao mcp para ia`)
+
+### Resumo das Ações Realizadas:
+1. **Dependências Web Adicionadas**:
+   - `fastapi`, `uvicorn`, `pydantic` e `jinja2` adicionadas via `uv add`.
+2. **Backend FastAPI (`src/api/app.py`)**:
+   - `/api/schema`: Consome a tool `get_schema()` do servidor MCP.
+   - `/api/query`: Recebe SQL, valida (apenas SELECT) e executa via `run_query()` do MCP.
+   - Endpoints analíticos dedicados: `/api/kpis`, `/api/analytics/gmv-categoria`, `/api/analytics/evolucao-mensal`, `/api/analytics/scorecard`, `/api/analytics/risco-churn`.
+   - `/api/ask`: Converte perguntas de negócio em linguagem natural e termos-chave em SQL dinâmico.
+   - Servimento de arquivos estáticos da pasta `src/frontend/` e rota raiz `/`.
+   - Nenhuma função excede 40 linhas e todas possuem Type Hints e Google Style Docstrings.
+3. **Frontend Interativo (`src/frontend/index.html` e `src/frontend/app.js`)**:
+   - Design moderno executivo (dark mode) em HTML5/CSS3 puro.
+   - **Banner de Disclaimer Visível**: *"Aviso Executivo: Os dados apresentados referem-se a uma amostra extraída do dataset público Olist e possuem finalidade analítica/educacional."*
+   - Cards com KPIs consolidados (GMV Total, Volume de Pedidos, Ticket Médio, Lead Time Médio).
+   - Gráficos 100% renderizados via Google Charts: Barra horizontal para categorias de produto, Área/Linha para evolução mensal da receita e pedidos, e Tabela executiva para risco de churn.
+   - Área interativa para o gerente de negócios com botões de perguntas rápidas e campo de pesquisa. Toda agregação é realizada em SQL no DuckDB, sem cálculos no frontend.
+4. **Testes Unitários e Qualidade**:
+   - Criação de `tests/test_api_app.py` cobrindo todas as rotas e validações de segurança da API (9 testes novos).
+   - Suíte geral de testes executada com `uv run pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=90`.
+   - **Resultado alcançado:** **95.01%** de cobertura geral (54 testes passando).
+   - Formatação e lint com `ruff` 100% limpos.

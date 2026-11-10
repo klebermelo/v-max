@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from src.api.intent_router import rotear_pergunta_executiva
 from src.mcp.server import (
     SQLSecurityError,
     executar_consulta_segura,
@@ -30,7 +31,7 @@ SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
 app = FastAPI(
     title="V-MAX Executive Dashboard & MCP API",
     description="API analítica conectada ao banco DuckDB da camada Gold e servidor MCP nativo.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -72,7 +73,7 @@ def api_get_schema() -> dict[str, list[dict[str, str]]]:
     """Retorna a estrutura das tabelas da camada Gold consumindo a tool do MCP."""
     try:
         return obter_schema_tabelas()
-    except Exception as exc:
+    except (ValueError, KeyError, RuntimeError) as exc:
         logger.error("Erro ao obter schema via MCP: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -90,7 +91,7 @@ def api_run_query(payload: QueryRequest) -> dict[str, Any]:
         raise
     except SQLSecurityError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
+    except (ValueError, KeyError, RuntimeError) as exc:
         logger.error("Erro inesperado na execução da query: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -141,65 +142,19 @@ def api_risco_churn() -> list[dict[str, Any]]:
 
 @app.post("/api/ask")
 def api_pergunta_inteligente(payload: NaturalLanguageQueryRequest) -> dict[str, Any]:
-    """Converte perguntas de negócio pré-definidas ou termos-chave em SQL dinâmico do DuckDB."""
-    pergunta_lower = payload.pergunta.lower().strip()
-
-    if (
-        "homem" in pergunta_lower
-        or "mulher" in pergunta_lower
-        or "gênero" in pergunta_lower
-        or "genero" in pergunta_lower
-    ):
-        explicacao = (
-            "Aviso Analítico: A base Olist não coleta dados demográficos pessoais como gênero ou nomes. "
-            "Apresentamos a segmentação geográfica por estado (UF) como proxy demográfico viável."
-        )
-        sql = _ler_arquivo_sql("performance_geografica.sql")
-    elif (
-        "estoque" in pergunta_lower
-        or "sem saída" in pergunta_lower
-        or "sem saida" in pergunta_lower
-        or "parado" in pergunta_lower
-    ):
-        explicacao = (
-            "Aviso Analítico: O dataset não possui controle de inventário físico. "
-            "Mapeamos o estoque parado virtual através da recência (dias sem vender desde a última transação)."
-        )
-        sql = _ler_arquivo_sql("produtos_sem_saida.sql", limit=30)
-    elif (
-        "categoria" in pergunta_lower
-        or "gmv" in pergunta_lower
-        or "faturamento" in pergunta_lower
-    ):
-        explicacao = "Análise consolidada de GMV, quantidade de pedidos e share por categoria de produto."
-        sql = _ler_arquivo_sql("gmv_por_categoria.sql", limit=15)
-    elif (
-        "vendedor" in pergunta_lower
-        or "scorecard" in pergunta_lower
-        or "ranking" in pergunta_lower
-    ):
-        explicacao = "Scorecard de vendedores ranqueados por faturamento e nota média de avaliação."
-        sql = _ler_arquivo_sql("scorecard_vendedores.sql", limit=20)
-    elif (
-        "churn" in pergunta_lower
-        or "atraso" in pergunta_lower
-        or "reclamação" in pergunta_lower
-        or "reclamacao" in pergunta_lower
-    ):
-        explicacao = "Identificação de pedidos com atraso logístico superior a 5 dias ou notas críticas (<= 2)."
-        sql = _ler_arquivo_sql("risco_churn.sql", limit=30)
-    else:
-        explicacao = "Exibindo os principais indicadores mensais da camada Gold."
-        sql = "SELECT * FROM kpi_sumario_mensal ORDER BY ano_mes DESC LIMIT 12;"
-
-    dados = executar_consulta_segura(sql)
-    return {
-        "pergunta": payload.pergunta,
-        "explicacao": explicacao,
-        "query_executada": sql,
-        "total_linhas": len(dados),
-        "dados": dados,
-    }
+    """Processa perguntas de negócio via roteador semântico sem vazamento de detalhes técnicos."""
+    try:
+        return rotear_pergunta_executiva(payload.pergunta)
+    except (ValueError, KeyError, RuntimeError) as exc:
+        logger.error("Falha no roteamento semântico: %s", exc)
+        return {
+            "sucesso": False,
+            "resumo_executivo": "Não foi possível processar a pergunta solicitada.",
+            "tipo_grafico": "table",
+            "titulo_visualizacao": "Erro no Processamento",
+            "colunas": ["Mensagem"],
+            "dados": [[str(exc)]],
+        }
 
 
 if FRONTEND_DIR.exists():

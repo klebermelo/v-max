@@ -1,6 +1,7 @@
 /**
  * Frontend do Dashboard Executivo V-MAX.
- * Renderiza exclusivamente via Google Charts e delega agregações ao DuckDB via FastAPI/MCP.
+ * Renderiza exclusivamente via Google Charts e comunica com a API FastAPI/MCP.
+ * Oculta detalhes técnicos, código SQL e foca na UX de negócios.
  */
 
 google.charts.load('current', { packages: ['corechart', 'bar', 'table'] });
@@ -126,8 +127,8 @@ async function carregarTabelaChurn() {
       else if (row.classificacao_risco === 'Risco Alto') badgeClass = 'badge-alto';
 
       tr.innerHTML = `
-        <td><code style="color: #60a5fa;">${row.order_id.substring(0, 10)}...</code></td>
-        <td><code>${row.customer_unique_id ? row.customer_unique_id.substring(0, 10) + '...' : '-'}</code></td>
+        <td><code style="color: #60a5fa;">${row.order_id.substring(0, 8)}...</code></td>
+        <td><code>${row.customer_unique_id ? row.customer_unique_id.substring(0, 8) + '...' : '-'}</code></td>
         <td>${row.customer_state || '-'}</td>
         <td style="color: ${row.dias_atraso > 5 ? '#f87171' : '#cbd5e1'}; font-weight: 600;">
           ${row.dias_atraso !== null ? row.dias_atraso + ' d' : 'No Prazo'}
@@ -155,11 +156,13 @@ function enviarPerguntaManual() {
 
 async function enviarPergunta(pergunta) {
   const box = document.getElementById('ai-response-box');
-  const explicacaoDiv = document.getElementById('ai-explicacao');
+  const resumoDiv = document.getElementById('ai-resumo');
+  const vizTitle = document.getElementById('ai-viz-title');
   const chartArea = document.getElementById('ai-chart-area');
 
   box.style.display = 'block';
-  explicacaoDiv.innerHTML = '<em>Processando query dinâmica no DuckDB via MCP...</em>';
+  resumoDiv.innerHTML = '<em>Consultando assistente executivo...</em>';
+  vizTitle.innerText = '';
   chartArea.innerHTML = '';
 
   try {
@@ -170,36 +173,80 @@ async function enviarPergunta(pergunta) {
     });
     const result = await res.json();
 
-    explicacaoDiv.innerHTML = `
-      <strong>Resposta da IA:</strong> ${result.explicacao}
-      <br><small style="color: #94a3b8; font-family: monospace;">SQL Executado: ${result.query_executada}</small>
-    `;
+    resumoDiv.innerHTML = result.resumo_executivo;
+    vizTitle.innerText = result.titulo_visualizacao || '';
 
-    if (result.dados && result.dados.length > 0) {
-      const chartData = new google.visualization.DataTable();
-      const firstRow = result.dados[0];
-      const keys = Object.keys(firstRow);
-
-      chartData.addColumn('string', keys[0]);
-      chartData.addColumn('number', keys[keys.length - 1]);
-
-      result.dados.slice(0, 10).forEach(r => {
-        chartData.addRow([String(r[keys[0]]), Number(r[keys[keys.length - 1]]) || 0]);
-      });
-
-      const chart = new google.visualization.ColumnChart(chartArea);
-      chart.draw(chartData, {
-        backgroundColor: 'transparent',
-        colors: ['#06b6d4'],
-        legend: { position: 'none' },
-        chartArea: { width: '80%', height: '70%' },
-        hAxis: { textStyle: { color: '#94a3b8' } },
-        vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } }
-      });
-    } else {
-      chartArea.innerHTML = '<p style="color: #94a3b8;">Nenhum registro encontrado para a consulta.</p>';
+    if (!result.dados || result.dados.length === 0) {
+      chartArea.innerHTML = '<p style="color: #94a3b8; padding: 20px 0;">Nenhum dado analítico encontrado para esta consulta.</p>';
+      return;
     }
+
+    renderizarVisualizacaoDinamica(chartArea, result);
   } catch (err) {
-    explicacaoDiv.innerHTML = `<span style="color: #ef4444;">Erro ao processar consulta: ${err.message}</span>`;
+    resumoDiv.innerHTML = `<span style="color: #ef4444;">Erro ao processar consulta: ${err.message}</span>`;
+  }
+}
+
+function renderizarVisualizacaoDinamica(container, result) {
+  const chartData = new google.visualization.DataTable();
+
+  // Adiciona colunas
+  result.colunas.forEach((col, idx) => {
+    const tipo = (idx === 0) ? 'string' : 'number';
+    chartData.addColumn(tipo, col);
+  });
+
+  // Adiciona linhas
+  result.dados.forEach(row => {
+    chartData.addRow(row);
+  });
+
+  const tipo = result.tipo_grafico;
+
+  if (tipo === 'bar') {
+    const chart = new google.visualization.BarChart(container);
+    chart.draw(chartData, {
+      backgroundColor: 'transparent',
+      colors: ['#3b82f6'],
+      legend: { position: 'none' },
+      chartArea: { width: '70%', height: '80%' },
+      hAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } },
+      vAxis: { textStyle: { color: '#f1f5f9' } }
+    });
+  } else if (tipo === 'column') {
+    const chart = new google.visualization.ColumnChart(container);
+    chart.draw(chartData, {
+      backgroundColor: 'transparent',
+      colors: ['#06b6d4'],
+      legend: { position: 'none' },
+      chartArea: { width: '80%', height: '70%' },
+      hAxis: { textStyle: { color: '#94a3b8', fontSize: 11 }, slantedText: true, slantedTextAngle: 45 },
+      vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } }
+    });
+  } else if (tipo === 'line') {
+    const chart = new google.visualization.LineChart(container);
+    chart.draw(chartData, {
+      backgroundColor: 'transparent',
+      colors: ['#8b5cf6', '#10b981'],
+      legend: { textStyle: { color: '#cbd5e1' }, position: 'top' },
+      chartArea: { width: '85%', height: '70%' },
+      hAxis: { textStyle: { color: '#94a3b8' }, slantedText: true, slantedTextAngle: 45 },
+      vAxis: { textStyle: { color: '#94a3b8' }, gridlines: { color: '#233152' } }
+    });
+  } else {
+    // Tabela padrão
+    let html = '<table><thead><tr>';
+    result.colunas.forEach(c => { html += `<th>${c}</th>`; });
+    html += '</tr></thead><tbody>';
+    result.dados.forEach(r => {
+      html += '<tr>';
+      r.forEach(val => {
+        const texto = (typeof val === 'number') ? val.toLocaleString('pt-BR') : val;
+        html += `<td>${texto}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
   }
 }
