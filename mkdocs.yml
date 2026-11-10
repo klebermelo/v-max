@@ -1,0 +1,48 @@
+site_name: V-MAX — Plataforma Analítica Medalhão & MCP
+site_description: Documentação Técnica da Arquitetura em Medalhão com DuckDB, Servidor MCP Nativo e Dashboard Executivo FastAPI
+site_author: Kleber Melo
+
+theme:
+  name: material
+  language: pt-BR
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Mudar para modo claro
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Mudar para modo escuro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+nav:
+  - Início: index.md
+  - Arquitetura Medalhão & Views: arquitetura.md
+  - Dicionário Dimensional Gold: dicionario_gold.md
+  - Guia de Execução (uv): guia_execucao.md
+  - Servidor MCP & Tools IA: mcp_tools.md
+  - Registro Técnico & Histórico:
+      - Onde a IA Errou: erros_ia.md
+      - Evolução do Projeto: evolução_projeto.md
+      - Amostras das Tabelas: conteúdo_tabelas.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list

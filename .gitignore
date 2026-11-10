@@ -11,3 +11,6 @@ htmlcov/
 # Bancos DuckDB e arquivos WAL
 *.db
 *.db.wal
+
+# Build do MkDocs
+site/

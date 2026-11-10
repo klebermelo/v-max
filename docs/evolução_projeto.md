@@ -402,3 +402,31 @@ Este documento registra o histórico sequencial das entregas, respostas e marcos
    - Cobertura total de testes: **95.48%** (58 testes aprovados, meta de 90% superada).
    - Todas as funções em `src/` mantidas estritamente com $\le 40$ linhas.
    - Formatação e linting 100% limpos via `ruff`.
+
+---
+
+## 14. Conclusão da Spec 07 (Documentação Final MkDocs Material, Qualidade e Entrega)
+
+**Data/Hora:** 10/11/2026 - 19:45  
+**Branch:** `dev`  
+**Commit:** `feat: 42 testes com pytest-cov, ruff linting e documentacao final mkdocs`
+
+### Resumo das Ações Realizadas:
+1. **Documentação Técnica Completa (MkDocs Material)**:
+   - Instalação de `mkdocs` e `mkdocs-material` via `uv add --dev mkdocs mkdocs-material`.
+   - Criação do arquivo `mkdocs.yml` na raiz com tema Material (`slate`/`default`), busca integrada e estrutura navegável em `docs/`:
+     - `docs/index.md`: Visão geral, ressalva amostral e navegação.
+     - `docs/arquitetura.md`: Arquitetura Medalhão (Bronze, Silver, Gold e Views Semânticas).
+     - `docs/dicionario_gold.md`: Dicionário de Dados e Modelo Dimensional Star Schema da Gold.
+     - `docs/guia_execucao.md`: Guia de operação passo a passo com `uv`, pipeline, MCP e FastAPI.
+     - `docs/mcp_tools.md`: Especificação técnica das tools do Servidor MCP (`get_schema`, `run_query`) e segurança Read-Only.
+     - `docs/erros_ia.md`, `docs/evolução_projeto.md` e `docs/conteúdo_tabelas.md`.
+   - Build validado com `uv run mkdocs build --strict` sem qualquer erro ou warning.
+2. **README.md Executivo e Avaliativo**:
+   - Atualização completa na raiz do projeto contemplando a arquitetura implementada, citação da fonte e licença pública (Kaggle Olist — CC BY-NC-SA 4.0), ressalva amostral (2016-2018), guia rápido via `uv` e a seção obrigatória `## Onde a IA Errou` consolidando todos os pontos de `docs/erros_ia.md`.
+3. **Garantia de Qualidade e Cobertura de Testes**:
+   - Formatação e linting validados com `uv run ruff format .` e `uv run ruff check --select I --fix .`.
+   - Suíte de testes executada com `uv run pytest tests/ --cov=src --cov-report=term-missing --cov-fail-under=90`.
+   - Resultado final: **58 testes aprovados** (acima do mínimo de 42) e **95.48% de cobertura de código** (acima do mínimo de 90%).
+4. **Orientação de Fechamento e Pull Request**:
+   - Exibição dos comandos exatos para consolidação e abertura do Pull Request da branch `dev` para a `main`.
